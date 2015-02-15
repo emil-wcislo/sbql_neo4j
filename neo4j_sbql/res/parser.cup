@@ -1,0 +1,85 @@
+package pl.wcislo.neo4j_sbql.result.parser;
+ 
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.List;
+
+import java_cup.runtime.DefaultSymbolFactory;
+import java_cup.runtime.Symbol;
+import pl.wcislo.neo4j_sbql.ast.*;
+import pl.wcislo.neo4j_sbql.ast.auxname.*;
+import pl.wcislo.neo4j_sbql.ast.binary.*;
+import pl.wcislo.neo4j_sbql.ast.terminal.*;
+import pl.wcislo.neo4j_sbql.ast.unary.*;
+
+parser code {: 
+	public Lexer lexer;
+	private String expr;
+	public Expression RESULT;
+	
+	public SbqlParser(String expr) {
+		this.symbolFactory = new DefaultSymbolFactory();   
+		this.expr = expr;
+	}
+	
+	void setResult(Expression exp) {
+		this.RESULT = exp;
+	}  
+
+:};
+
+init with {: 	    lexer = new Lexer(new StringReader(expr)); :};
+scan with {:		return lexer.next_token(); :};
+
+
+terminal Integer INTEGER_LITERAL;
+terminal Double DOUBLE_LITERAL;
+terminal Boolean BOOLEAN_LITERAL;
+terminal String STRING_LITERAL;
+terminal String NAME;
+
+terminal String PLUS;
+terminal String MINUS;
+terminal String MULTIPLY; 
+terminal String DIVIDE;
+terminal String EQUALS;
+
+terminal String DOT;
+terminal String GREATER_THAN;
+terminal String LESS_THAN;
+terminal String WHERE;
+
+terminal String LEFT_ROUND_BRACKET;
+terminal String RIGHT_ROUND_BRACKET;
+
+non terminal Expression goal;
+non terminal Expression expr;
+
+
+//priority
+precedence left DOT, WHERE;
+precedence left LESS_THAN, GREATER_THAN, EQUALS;
+precedence left PLUS, MINUS; 
+precedence left MULTIPLY, DIVIDE;
+precedence left NAME;
+precedence left LEFT_ROUND_BRACKET, RIGHT_ROUND_BRACKET;
+
+start with goal;
+
+goal ::= expr:e		{: RESULT = e; parser.setResult(e); :} ;
+
+expr  ::=
+		expr:e1 PLUS:o expr:e2	{: RESULT = new PlusExpression(e1, e2); :}
+	| 	expr:e1 MINUS:o expr:e2	{: RESULT = new MinusExpression(e1, e2); :}
+	| 	expr:e1 MULTIPLY:o 	 expr:e2	{: RESULT = new MultiplyExpression(e1, e2); :}
+	| 	expr:e1 DIVIDE:o	 expr:e2	{: RESULT = new DivideExpression(e1, e2); :}
+	| 	expr:e1 DOT:o	 expr:e2	{: RESULT = new DotExpression(e1, e2); :}
+	| 	expr:e1 WHERE:o	 expr:e2	{: RESULT = new WhereExpression(e1, e2); :}
+	| 	expr:e1 EQUALS:o	 expr:e2	{: RESULT = new EqualsExpression(e1, e2); :}
+	| 	expr:e1 LESS_THAN:o	 expr:e2	{: RESULT = new LessThanExpression(e1, e2); :}
+	| 	expr:e1 GREATER_THAN:o	 expr:e2	{: RESULT = new GreaterThanExpression(e1, e2); :}
+	| 	NAME:o	 			{: RESULT = new NameTerminal((String)o); :}
+	| 	INTEGER_LITERAL:o	{: RESULT = new IntegerTerminal((Integer)o); :}
+	| 	STRING_LITERAL:o	{: RESULT = new StringTerminal((String)o); :}
+	|	LEFT_ROUND_BRACKET:o expr:e1 RIGHT_ROUND_BRACKET {: RESULT = e1; :}
+	;
